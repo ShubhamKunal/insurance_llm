@@ -26,7 +26,6 @@ def extract_rating_from_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(separator="\n", strip=True)
 
-    # Common patterns from AM Best pages
     patterns = [
         r"Financial Strength Rating\s*\(FSR\)\s*:\s*([A-Z][+A-Z ]+\(?[A-Za-z ]*\)?)",
         r"Best's Financial Strength Rating\s*:\s*([A-Z][+A-Z ]+\(?[A-Za-z ]*\)?)",
@@ -39,7 +38,6 @@ def extract_rating_from_html(html: str) -> str:
         if m:
             return m.group(1).strip()
 
-    # Very rough fallback – look for something like "A++ (Superior)" or "A+"
     approx = re.search(r"\b([ABCD][+-]?(?:\s*\([A-Za-z ]+\))?)\b", text)
     if approx:
         return approx.group(1).strip()

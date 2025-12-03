@@ -9,8 +9,6 @@ import re
 from am_best_scraper import fetch_am_best_ratings
 
 
-
-
 import os
 from prompts.prompt import build_prompt
 from pathlib import Path
@@ -112,7 +110,6 @@ def scrape_truck_pages(start_url: str, max_pages: int = 5) -> str:
         page_text = extract_visible_text(html)
         collected_texts.append(page_text)
 
-        # find more truck-related internal links
         soup = BeautifulSoup(html, "html.parser")
         for a in soup.find_all("a", href=True):
             href = a["href"]
@@ -121,12 +118,11 @@ def scrape_truck_pages(start_url: str, max_pages: int = 5) -> str:
 
             parsed_new = urlparse(new_url)
             if parsed_new.netloc != base_domain:
-                continue  # external
+                continue  
 
             if new_url in visited:
                 continue
 
-            # only queue truck-relevant links
             if is_truck_relevant(new_url, link_text):
                 queue.append(new_url)
 
@@ -205,17 +201,14 @@ def create_pdf_from_response(response_text: str, pdf_path: str = "output.pdf"):
 
     story = []
 
-    # Convert markdown **bold** to HTML <b>
     def md_to_html(s: str) -> str:
         return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
 
-    # Split by headings
     idx1 = response_text.find("### 1.")
     idx2 = response_text.find("### 2.")
     idx3 = response_text.find("### 3.")
 
     if idx1 == -1:
-        # Fallback: just dump everything
         story.append(Paragraph(md_to_html(response_text).replace("\n", "<br/>"), body_style))
         doc.build(story)
         return
@@ -230,19 +223,13 @@ def create_pdf_from_response(response_text: str, pdf_path: str = "output.pdf"):
 
         lines = section_text.splitlines()
 
-        # first heading line
+
         heading_line = next((l for l in lines if l.startswith("###")), f"### {default_title}")
         title = heading_line.lstrip("#").strip()
 
-        # add main heading
         story.append(Paragraph(title, heading_style))
         story.append(Spacer(1, 8))
 
-        # optional: local subheading (like "Companies & Coverages", etc.) – not strictly needed
-        # story.append(Paragraph(subtitle, subheading_style))
-        # story.append(Spacer(1, 6))
-
-        # other lines -> paragraphs
         content_lines = [
             l for l in lines
             if not l.startswith("###") and not l.strip().startswith("---")
@@ -254,16 +241,13 @@ def create_pdf_from_response(response_text: str, pdf_path: str = "output.pdf"):
                 story.append(Spacer(1, 4))
                 continue
 
-            # no bullet stripping needed if prompt obeyed, but just in case:
             cleaned = cleaned.lstrip("*-•").strip()
 
-            # Turn numbered lines and normal lines into Paragraphs
             html = md_to_html(cleaned)
             story.append(Paragraph(html, body_style))
 
         story.append(Spacer(1, 16))
 
-    # Add all three sections
     add_section(section1, "1. Commercial Truck Insurance Coverages and Other Notes")
     add_section(section2, "2. Clean Comparison Narrative")
     add_section(section3, "3. Comparison Summary, Observations, and Differentiators")
@@ -276,13 +260,11 @@ def compare_coverages_with_gemini(scraped_data: dict):
         print("[AI] No scraped data available.")
         return
 
-    # 1) Fetch AM Best ratings from local HTML files
     domains = list(scraped_data.keys())
     am_best_ratings = fetch_am_best_ratings(domains)
 
     model = genai.GenerativeModel(GEMINI_MODEL)
 
-    # 2) Build prompt with both scraped website text & AM Best ratings
     prompt = build_prompt(scraped_data, am_best_ratings)
 
     print("[AI] Sending request to Gemini 2.5 Flash...")
@@ -293,11 +275,9 @@ def compare_coverages_with_gemini(scraped_data: dict):
     print("\n\n===== AI COMPARISON RESULT =====\n")
     print(text)
 
-    # Save raw output
     with open("output.txt", "w", encoding="utf-8") as f:
         f.write(text)
 
-    # Create the nicely formatted PDF (we keep your current style)
     create_pdf_from_response(text, pdf_path="output.pdf")
 
 
